@@ -3,8 +3,10 @@ package main
 import (
 	"errors"
 	"fmt"
+	"encoding/json"
 	"github.com/flosch/pongo2"
 	"github.com/satori/go.uuid"
+	clconfig "github.com/coreos/container-linux-config-transpiler/config"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
@@ -19,6 +21,8 @@ type Machine struct {
 	OperatingSystem string
 	Finish          string
 	Preseed         string
+	Ignition        string
+	CoreosConfig    string
 	ShortName       string
 	Domain          string
 	Token           string // This is set by the service
@@ -63,7 +67,7 @@ func machineDefinition(hostname string, machinePath string) (Machine, error) {
 }
 
 // Render template among with machine and config struct
-func (m Machine) renderTemplate(template string, config Config) (string, error) {
+func (m Machine) renderTemplate(template string, templateType string, config Config) (string, error) {
 
 	template = path.Join(config.TemplatePath, template)
 	if _, err := os.Stat(template); err != nil {
@@ -72,9 +76,32 @@ func (m Machine) renderTemplate(template string, config Config) (string, error) 
 
 	var tpl = pongo2.Must(pongo2.FromFile(template))
 	result, err := tpl.Execute(pongo2.Context{"machine": m, "config": config})
+
 	if err != nil {
 		return "", err
 	}
+
+    if templateType == "ignition" || templateType == "coreosconfig" {
+        dataIn := []byte(result)
+
+        cfg, ast, report := clconfig.Parse(dataIn)
+        if len(report.Entries) > 0 {
+            return "", errors.New(fmt.Sprintf("%v\n%v", report.String(), result))
+        }
+
+        ingCfg, report := clconfig.Convert(cfg, "", ast)
+        if len(report.Entries) > 0 {
+            return "", errors.New(report.String())
+        }
+
+        var dataOut []byte
+        dataOut, err = json.Marshal(&ingCfg)
+        if err != nil {
+            return "", errors.New(fmt.Sprintf("Failed to marshal output: %v", err))
+        }
+        result = string(dataOut)
+    }
+
 	return result, err
 }
 
@@ -119,7 +146,7 @@ func (m Machine) pixieInit(config Config) (PixieConfig, error) {
 	if err != nil {
 		return pixieConfig, err
 	}
-	cmdline, err := tpl.Execute(pongo2.Context{"BaseURL": config.BaseURL, "Hostname": m.Hostname, "Token": m.Token})
+    cmdline, err := tpl.Execute(pongo2.Context{"config": config, "Params": m.Params, "BaseURL": config.BaseURL, "Hostname": m.Hostname, "Token": m.Token})
 	if err != nil {
 		return pixieConfig, err
 	}

@@ -23,7 +23,7 @@ func TestRenderTemplate(t *testing.T) {
 	config, _ := loadConfig("config.yaml")
 	m, _ := machineDefinition("my-service.example.com", "machines")
 
-	template, err := m.renderTemplate("finish.j2", config)
+	template, err := m.renderTemplate("finish.j2", "Preseed", config)
 	if err != nil {
 		t.Errorf("failed to render template")
 	}
@@ -37,7 +37,7 @@ func TestRenderTemplate(t *testing.T) {
 func TestRenderTemplateNotFound(t *testing.T) {
 	config, _ := loadConfig("config.yaml")
 	m, _ := machineDefinition("my-service.example.com", "machines")
-	_, err := m.renderTemplate("invalid.j2", config)
+	_, err := m.renderTemplate("invalid.j2", "Preseed", config)
 
 	expected := "Template does not exist"
 	if err.Error() != expected {

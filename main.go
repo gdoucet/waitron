@@ -55,18 +55,22 @@ func templateHandler(response http.ResponseWriter, request *http.Request,
 	var template string
 	if ps.ByName("template") == "finish" {
 		template = m.Finish
+    } else if ps.ByName("template") == "ignition" {
+        template = m.Ignition
+    } else if ps.ByName("template") == "coreosconfig" {
+        template = m.CoreosConfig
 	} else {
 		template = m.Preseed
 	}
 
-	renderedTemplate, err := m.renderTemplate(template, config)
+	renderedTemplate, err := m.renderTemplate(template, ps.ByName("template"), config)
 	if err != nil {
 		log.Println(err)
 		http.Error(response, "Unable to render template", 400)
 		return
 	}
 
-	fmt.Fprintf(response, renderedTemplate)
+	fmt.Fprintf(response, "%s", renderedTemplate)
 }
 
 // @Title buildHandler
