@@ -108,7 +108,7 @@ func (m Machine) renderTemplate(template string, templateType string, config Con
 // Posts machine macaddress to the forman proxy among with pxe configuration
 func (m Machine) setBuildMode(config Config) error {
 	// Generate a random token used to authenticate requests
-	config.Tokens[m.Hostname] = uuid.NewV4().String()
+	config.Tokens[m.Hostname] = uuid.Must(uuid.NewV4()).String()
 	log.Println(fmt.Sprintf("%s installation token: %s", m.Hostname, config.Tokens[m.Hostname]))
 	// Add token to machine struct
 	m.Token = config.Tokens[m.Hostname]
